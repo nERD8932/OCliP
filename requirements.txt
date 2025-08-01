@@ -1,0 +1,9 @@
+psutil
+pyperclip
+ollama
+keyboard
+plyer
+pystray
+playsound==1.2.2
+PySide6-Essentials
+pillow
