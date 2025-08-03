@@ -4,8 +4,8 @@ import platform
 from PyInstaller.utils.hooks import collect_submodules
 
 if platform.system() == "Windows":
-    app_icon = "./icons/icon.ico" 
-    
+    app_icon = "./icons/icon.ico"
+
 else:
     app_icon = "./icons/icon.png"
 
@@ -29,7 +29,7 @@ a = Analysis(
     runtime_hooks=[],
     excludes=[],
     noarchive=False,
-    optimize=1,
+    optimize=2,
 )
 pyz = PYZ(a.pure)
 

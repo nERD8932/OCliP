@@ -8,3 +8,6 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Ollama files
+ollama/

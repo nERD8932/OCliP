@@ -11,8 +11,6 @@ It's meant to skip the hassle of having to copy-paste content over twice when ed
 
 ## Usage
 
-**NOTE: This app uses Ollama to serve models. First step is to download [Ollama](www.ollama.com).**
-
 ### Recommended
 The simplest approach is to download a prebuilt version from GitHub.
 
@@ -30,6 +28,8 @@ Or through Python:
     ./.venv/Scripts/activate
     python impclip.py
     ```
+
+**NOTE: This app uses Ollama to serve models. If you don't already have it installed, the app will ask and download it for you.**
 
 **NOTE: This app needs administrator privileges to have the keyboard listeners and notifications to work properly.**
 
