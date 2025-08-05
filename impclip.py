@@ -1,7 +1,5 @@
-import asyncio
 import io
 import zipfile
-
 import psutil
 import pyperclip
 import ollama
@@ -23,7 +21,7 @@ from PIL import Image
 from PySide6.QtWidgets import QApplication, QMainWindow, QPlainTextEdit, QLabel, QVBoxLayout, QWidget, QHBoxLayout, \
     QLineEdit, QCheckBox, QDialog, QPushButton, QStyle, QProgressBar
 from PySide6.QtGui import QFont, QIcon, Qt, QMovie
-from PySide6.QtCore import QTimer, QSize, Signal, Slot, QThread, QObject
+from PySide6.QtCore import QTimer, QSize, Signal, Slot, QThread, QObject, QSignalBlocker
 import playsound as ps
 import requests
 
@@ -102,16 +100,25 @@ class OcliPWindow(QMainWindow):
                 padding: 1px; 
             }
             QProgressBar {
+                border-radius: 14px;
+                font-family: Consolas;
+                font-size: 11pt;
+                font-weight: bold;
+                background-color: #2e2e2e;
+                padding: 5px;
+            }
+            QProgressBar::text {
                 color: #d4d4d4;
                 font-family: Consolas;
                 font-size: 11pt;
-                border-radius: 5px;
+                font-weight: bold;
             }
-             QProgressBar::chunk {
+            QProgressBar::chunk {
                 background-color: #5cba47;
-                width: 2px;
-                margin: 1px;
-                border-radius: 1px;
+                font-family: Consolas;
+                font-size: 11pt;
+                border-radius: 14px;
+                font-weight: bold;
             }
             QPushButton {
                 font-family: Consolas;
@@ -248,15 +255,18 @@ class OcliPWindow(QMainWindow):
     def update_flag(self, flag, val):
         match flag:
             case "auto":
-                self.auto_button.setChecked(val)
+                with QSignalBlocker(self.auto_button):
+                    self.auto_button.setChecked(val)
                 self.impClip.toggle_auto_paste()
                 return
             case "notifications":
-                self.notifications_button.setChecked(val)
+                with QSignalBlocker(self.notifications_button):
+                    self.notifications_button.setChecked(val)
                 self.impClip.toggle_notifications()
                 return
             case "monitor":
-                self.monitor_button.setChecked(val)
+                with QSignalBlocker(self.monitor_button):
+                    self.monitor_button.setChecked(val)
                 self.impClip.toggle_monitor()
                 return
             case _:
@@ -311,7 +321,15 @@ class DownloadDialog(QDialog):
         self.setLayout(layout)
 
         self.signals = DownloadSignals()
-        self.signals.progress.connect(self.progressBar.setValue)
+        self.pwidth = self.progressBar.width()
+        self.pheight = self.progressBar.height()
+
+        def updateProgress(progress):
+            self.progressBar.setValue(progress)
+            r = str(min(int(progress*self.pheight/200), 11))
+            self.progressBar.setStyleSheet("QProgressBar::chunk { border-radius: " + r + "px; }")
+
+        self.signals.progress.connect(updateProgress)
         self.signals.done.connect(self.on_download_done)
 
 
@@ -485,8 +503,6 @@ class ImproveClipboard:
                 time.sleep(5)
             self.ollama_path = Path(self.ollama_path).resolve().absolute()
         os.environ["PATH"] = os.environ.get("PATH", "") + os.pathsep + str(self.ollama_path)
-            
-                
 
     def signal_handler(self, sig, frame):
         logging.info("Shutdown signal received. Exiting.")
@@ -651,7 +667,7 @@ class ImproveClipboard:
             target=monitor, 
             daemon=True,
             name="KeyboardMonitor"
-            )
+        )
 
     def make_tray_icon(self):
         menu = Menu(
@@ -705,7 +721,6 @@ class ImproveClipboard:
 class OllamaNotFoundException(Exception):
     def __init__(self, *args):
         super().__init__(*args)
-
 
 def resource_path(relative_path):
         base_path = Path(getattr(sys, '_MEIPASS', Path.cwd()))

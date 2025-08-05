@@ -1,6 +1,6 @@
 [project]
 name = "OCliP"
-version = "0.0.3"
+version = "0.0.4"
 description = "A simple app meant to improve the copied clipboard content by running it through an Ollama model."
 readme = "README.md"
 requires-python = ">=3.12"
