@@ -447,7 +447,7 @@ class ImproveClipboard:
 
         self.notif_hotkey = "ctrl+n"
         self.monitor_hotkey = "ctrl+m"
-        self.trigger_hotkey = "ctrl+shift+c"
+        self.trigger_hotkey = "ctrl+c"
         self.auto_paste_hotkey = "ctrl+shift+a"
 
         lines = self.get_config()
@@ -458,7 +458,6 @@ class ImproveClipboard:
             self.sys_prompt = lines.get("sys_prompt", self.default_sys_prompt)
         self.notif_hotkey = lines.get("notif_hotkey", self.notif_hotkey)
         self.monitor_hotkey = lines.get("monitor_hotkey", self.monitor_hotkey)
-        self.trigger_hotkey = lines.get("trigger_hotkey", self.trigger_hotkey)
         self.auto_paste_hotkey = lines.get("auto_paste_hotkey", self.auto_paste_hotkey)
 
         with open(self.config_pth, "w") as f:
@@ -473,8 +472,6 @@ class ImproveClipboard:
             f.write(f"notif_hotkey={self.notif_hotkey}\n")
             f.write("# Clipboard monitoring toggle hotkey.\n")
             f.write(f"monitor_hotkey={self.monitor_hotkey}\n")
-            f.write("# Clipboard update trigger hotkey.\n")
-            f.write(f"trigger_hotkey={self.trigger_hotkey}\n")
             f.write("# Auto Paste toggle hotkey.\n")
             f.write(f"auto_paste_hotkey={self.auto_paste_hotkey}\n")
 
@@ -578,7 +575,6 @@ class ImproveClipboard:
         sp = lines.get("sys_prompt", self.sys_prompt)
         n = lines.get("notif_hotkey", self.notif_hotkey)
         m = lines.get("monitor_hotkey", self.monitor_hotkey)
-        t = lines.get("trigger_hotkey", self.trigger_hotkey)
         a = lines.get("auto_paste_hotkey", self.auto_paste_hotkey)
         with open(self.config_pth, "w") as f:
             f.write("### OCliP Configuration File\n")
@@ -612,12 +608,6 @@ class ImproveClipboard:
                 f.write(f"monitor_hotkey={self.monitor_hotkey}\n")
             else:
                 f.write(f"monitor_hotkey={m}\n")
-
-            f.write("# Clipboard update trigger hotkey.\n")
-            if self.trigger_hotkey != t:
-                f.write(f"trigger_hotkey={self.trigger_hotkey}\n")
-            else:
-                f.write(f"trigger_hotkey={t}\n")
 
             f.write("# Auto Paste toggle hotkey.\n")
             if self.auto_paste_hotkey != a:
@@ -687,7 +677,6 @@ class ImproveClipboard:
 
     def toggle_trigger(self):
         if not self.triggered and self.monitoring_enabled:
-            keyboard.send("ctrl+c")
             self.triggered = True
             logging.info(f"Clipboard updated triggered.")
 
@@ -773,6 +762,8 @@ class ImproveClipboard:
             while not self.stop_event.is_set():
                 if self.monitoring_enabled and self.triggered:
                     try:
+                        keyboard.press_and_release('ctrl+c')
+                        time.sleep(0.1)
                         current_text = pyperclip.paste()
                         logging.info("Clipboard changed. Improving text...")
                         improved = self.improve_text(current_text)
@@ -787,7 +778,7 @@ class ImproveClipboard:
                     except Exception as e:
                         logging.error(f"Error while monitoring clipboard:\n{e}")
                 self.triggered = False
-                time.sleep(0.5)
+                time.sleep(0.1)
 
         return threading.Thread(
             target=monitor, 
