@@ -5,9 +5,9 @@ It's meant to skip the hassle of having to copy-paste content over twice when ed
 
 ## Features
 
- - Inbuilt notifications when the processing is done that works across different operating systems.
- - Includes flag options for custom Ollama models, Ollama path, system prompts.
- - Hotkeys to enable or disable features.
+ - Inbuilt notifications for state toggles.
+ - Includes flag and config options for custom Ollama models, system prompts and hot keys.
+ - Tray icon for quick access.
 
 ## Usage
 
@@ -15,7 +15,6 @@ It's meant to skip the hassle of having to copy-paste content over twice when ed
 The simplest approach is to download a prebuilt version from GitHub.
 
 ### Through Python
-Or through Python:
  - Clone the repository
  - Open a terminal inside the repository folder
  - Install the dependancies with 
@@ -27,6 +26,12 @@ Or through Python:
     ```
     ./.venv/Scripts/activate
     python impclip.py
+    ```
+ - Or build a standalone executable with
+    ```
+    pip install pyinstaller
+    pyinstaller OCliP.spec
+   # The generated EXE will be in the dist folder. A first-time build may take a few minutes.
     ```
 
 **NOTE: This app uses Ollama to serve models. If you don't already have it installed, the app will ask and download it for you.**

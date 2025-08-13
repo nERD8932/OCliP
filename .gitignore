@@ -5,6 +5,8 @@ build/
 dist/
 wheels/
 *.egg-info
+latest.log
+oclip.cfg
 
 # Virtual environments
 .venv

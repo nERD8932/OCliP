@@ -210,9 +210,14 @@ class OcliPWindow(QMainWindow):
         self.sys_prompt_label.setFont(QFont("Consolas", 14))
         self.sys_prompt_label.setText("System Prompt")
         self.sys_prompt_input = QLineEdit(clearButtonEnabled=True)
-        self.sys_prompt_input.setText(self.sys_prompt)
-        self.sys_prompt_input.setCursorPosition(0)
-        self.sys_prompt_input.editingFinished.connect(lambda: self.impClip.set_sys_prompt(self.sys_prompt_input.text()))
+        self.sys_prompt_input.setText(self.impClip.sys_prompt)
+        self.sys_prompt_input.setCursorPosition(-len(self.impClip.sys_prompt))
+
+        def update_prompt():
+            self.impClip.set_sys_prompt(self.sys_prompt_input.text())
+            self.impClip.update_config()
+
+        self.sys_prompt_input.editingFinished.connect(update_prompt)
 
         self.checkrows = QVBoxLayout()
         self.checkrows.setContentsMargins(0, 0, 20, 0)
@@ -419,15 +424,60 @@ class ImproveClipboard:
     tray = None
     thread = None
     wait_for_download = False
+    default_model_name = "gemma3"
+    default_sys_prompt = "Improve the following text without significantly changing the word count or meaning."
+    sys_postfix = "Output only the requested text in the format of the text itself and nothing else, this is extremely important. "
 
-    def __init__(self, model_name, sys_prompt, ollama_path, force_path, update_flag, signal_download):
+    def __init__(
+            self,
+            model_name,
+            sys_prompt,
+            ollama_path,
+            force_path,
+            update_flag,
+            signal_download,):
+
         signal.signal(signal.SIGINT, self.signal_handler)
         signal.signal(signal.SIGTERM, self.signal_handler)
         self.setLogger()
 
         self.model_name = model_name
-        self.sys_postfix = "\nOutput only the requested text in the format of the text itself and nothing else, this is extremely important. "
-        self.sys_prompt = sys_prompt + self.sys_postfix
+        self.sys_prompt = sys_prompt
+        self.config_pth = Path("./oclip.cfg").resolve().absolute()
+
+        self.notif_hotkey = "ctrl+n"
+        self.monitor_hotkey = "ctrl+m"
+        self.trigger_hotkey = "ctrl+shift+c"
+        self.auto_paste_hotkey = "ctrl+shift+a"
+
+        lines = self.get_config()
+        if self.model_name is None:
+            self.model_name = lines.get("model", self.default_model_name)
+        self.sys_postfix = lines.get("sys_postfix", self.sys_postfix)
+        if self.sys_prompt is None:
+            self.sys_prompt = lines.get("sys_prompt", self.default_sys_prompt)
+        self.notif_hotkey = lines.get("notif_hotkey", self.notif_hotkey)
+        self.monitor_hotkey = lines.get("monitor_hotkey", self.monitor_hotkey)
+        self.trigger_hotkey = lines.get("trigger_hotkey", self.trigger_hotkey)
+        self.auto_paste_hotkey = lines.get("auto_paste_hotkey", self.auto_paste_hotkey)
+
+        with open(self.config_pth, "w") as f:
+            f.write("### OCliP Configuration File\n")
+            f.write("# Ollama model name. Please ensure that the model actually exists in the Ollama Repo.\n")
+            f.write(f"model={self.model_name}\n")
+            f.write("# System prompt to use for model output (needs to be in one line).\n")
+            f.write(f"sys_prompt={self.sys_prompt}\n")
+            f.write("# System prompt postfix.\n")
+            f.write(f"sys_postfix={self.sys_postfix}\n")
+            f.write("# Notification toggle hotkey.\n")
+            f.write(f"notif_hotkey={self.notif_hotkey}\n")
+            f.write("# Clipboard monitoring toggle hotkey.\n")
+            f.write(f"monitor_hotkey={self.monitor_hotkey}\n")
+            f.write("# Clipboard update trigger hotkey.\n")
+            f.write(f"trigger_hotkey={self.trigger_hotkey}\n")
+            f.write("# Auto Paste toggle hotkey.\n")
+            f.write(f"auto_paste_hotkey={self.auto_paste_hotkey}\n")
+
         self.force_path = force_path
         self.update_flag = update_flag
         self.signal_download = signal_download
@@ -506,7 +556,76 @@ class ImproveClipboard:
 
     def signal_handler(self, sig, frame):
         logging.info("Shutdown signal received. Exiting.")
+        self.update_config()
         self.stop_threads()
+
+    def get_config(self):
+        try:
+            with open(self.config_pth, "r") as f:
+                lines = {}
+                for line in f:
+                    if "=" in line and not line.startswith("#"):
+                        key, val = line.strip().split("=", 1)
+                        lines[key] = val
+            return lines
+        except Exception as e:
+            return {}
+
+    def update_config(self):
+        lines = self.get_config()
+        mn = lines.get("model", self.model_name)
+        spfx = lines.get("sys_postfix", self.sys_postfix)
+        sp = lines.get("sys_prompt", self.sys_prompt)
+        n = lines.get("notif_hotkey", self.notif_hotkey)
+        m = lines.get("monitor_hotkey", self.monitor_hotkey)
+        t = lines.get("trigger_hotkey", self.trigger_hotkey)
+        a = lines.get("auto_paste_hotkey", self.auto_paste_hotkey)
+        with open(self.config_pth, "w") as f:
+            f.write("### OCliP Configuration File\n")
+
+            f.write("# Ollama model name. Please ensure that the model actually exists in the Ollama Repo.\n")
+            if self.model_name != mn:
+                f.write(f"model={self.model_name}\n")
+            else:
+                f.write(f"model={mn}\n")
+
+            f.write("# System prompt to use for model output (needs to be in one line).\n")
+            if self.sys_prompt != sp:
+                f.write(f"sys_prompt={self.sys_prompt}\n")
+            else:
+                f.write(f"sys_prompt={sp}\n")
+
+            f.write("# System prompt postfix.\n")
+            if self.sys_postfix != spfx:
+                f.write(f"sys_postfix={self.sys_postfix}\n")
+            else:
+                f.write(f"sys_postfix={spfx}\n")
+
+            f.write("# Notification toggle hotkey\n")
+            if self.notif_hotkey != n:
+                f.write(f"notif_hotkey={self.notif_hotkey}\n")
+            else:
+                f.write(f"notif_hotkey={n}\n")
+
+            f.write("# Clipboard monitoring toggle hotkey.\n")
+            if self.monitor_hotkey != m:
+                f.write(f"monitor_hotkey={self.monitor_hotkey}\n")
+            else:
+                f.write(f"monitor_hotkey={m}\n")
+
+            f.write("# Clipboard update trigger hotkey.\n")
+            if self.trigger_hotkey != t:
+                f.write(f"trigger_hotkey={self.trigger_hotkey}\n")
+            else:
+                f.write(f"trigger_hotkey={t}\n")
+
+            f.write("# Auto Paste toggle hotkey.\n")
+            if self.auto_paste_hotkey != a:
+                f.write(f"auto_paste_hotkey={self.auto_paste_hotkey}\n")
+            else:
+                f.write(f"auto_paste_hotkey={a}\n")
+
+        logging.info("Config updated!")
 
     def stop_threads(self):
         self.stop_event.set()
@@ -534,11 +653,17 @@ class ImproveClipboard:
         else:
             subprocess.run(['pkill', '-f', 'ollama'])
 
-    def setLogger(self):
+    @staticmethod
+    def setLogger():
         logging.basicConfig(
             level=logging.INFO,
             format='[%(asctime)s] %(message)s',
-            datefmt='%H:%M:%S')
+            datefmt='%H:%M:%S',
+            handlers = [
+                logging.FileHandler("latest.log", mode="a", encoding="utf-8"),
+                logging.StreamHandler()
+            ],
+        )
         logging.getLogger("httpx").setLevel(logging.WARNING)
         logging.getLogger("httpcore").setLevel(logging.WARNING)
         logging.getLogger("urllib3").setLevel(logging.WARNING)
@@ -562,6 +687,7 @@ class ImproveClipboard:
 
     def toggle_trigger(self):
         if not self.triggered and self.monitoring_enabled:
+            keyboard.send("ctrl+c")
             self.triggered = True
             logging.info(f"Clipboard updated triggered.")
 
@@ -575,19 +701,19 @@ class ImproveClipboard:
     
     def setup_hotkey(self):
         keyboard.add_hotkey(
-            'ctrl+shift+c',
+            self.monitor_hotkey,
             lambda: self.update_flag("monitor", not self.monitoring_enabled)
         )
         keyboard.add_hotkey(
-            'ctrl+shift+a',
+            self.auto_paste_hotkey,
             lambda: self.update_flag("auto", not self.auto_paste)
         )
         keyboard.add_hotkey(
-            'ctrl+c',
+            self.trigger_hotkey,
             self.toggle_trigger
         )
         keyboard.add_hotkey(
-            'ctrl+n',
+            self.notif_hotkey,
             lambda: self.update_flag("notifications", not self.notifications_enabled)
         )
 
@@ -691,7 +817,7 @@ class ImproveClipboard:
             response = self.client.generate(
                 model=self.model_name,
                 prompt=clipboard_text,
-                system=self.sys_prompt,
+                system=self.sys_prompt+self.sys_postfix,
                 keep_alive=10.0
             )
             return response['response'].strip()
@@ -715,7 +841,8 @@ class ImproveClipboard:
                 logging.warning(f"Notification failed:\n{e}")
 
     def set_sys_prompt(self, prompt):
-        self.sys_prompt = prompt + self.sys_postfix
+        self.sys_prompt = prompt
+        self.update_config()
     
 
 class OllamaNotFoundException(Exception):
@@ -728,22 +855,19 @@ def resource_path(relative_path):
 
 if __name__ == "__main__":
 
-    default_model_name = "gemma3"
-    default_sys_prompt = "Improve the following text without significantly changing the word count or meaning."
-
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--model',
-                    type=str,
-                    required=False,
-                    default=default_model_name,
-                    help='Ollama model to run.')
+                        type=str,
+                        required=False,
+                        default=None,
+                        help='Ollama model to run. Defaults to "gemma3"')
     
     parser.add_argument('--sys-prompt', 
                         type=str, 
                         required=False, 
                         help='System prompt to use for model output.',
-                        default=default_sys_prompt)
+                        default=None)
     
     parser.add_argument('--ollama-path', 
                         type=str, 
@@ -752,8 +876,8 @@ if __name__ == "__main__":
                         default=None)
     
     parser.add_argument('--force-path',
-                    action='store_true',
-                    help='Force Ollama execution on the specified path.')
+                        action='store_true',
+                        help='Force Ollama execution on the specified path.')
     
     args = parser.parse_args()
 
